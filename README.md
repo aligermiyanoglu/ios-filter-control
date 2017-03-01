@@ -1,3 +1,6 @@
+Please check https://github.com/aligermiyanoglu/SEFilterControl-ProgressColor for Cocoapods support of this modification
+
+
 iOS Filter Control
 ==================
 
