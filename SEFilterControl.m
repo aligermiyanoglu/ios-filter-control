@@ -116,6 +116,18 @@
     return self;
 }
 
+- (void)setProgressColor:(UIColor *)progressColor {
+    _progressColor = progressColor;
+    
+    self.progressView.color = _progressColor;
+}
+
+- (void)setProgressBGColor:(UIColor *)progressBGColor {
+    _progressBGColor = progressBGColor;
+    
+    self.progressBGView.color = _progressBGColor;
+}
+
 - (void)applyDefaultConfiguration
 {
     self.backgroundColor    = [UIColor clearColor];

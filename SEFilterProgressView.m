@@ -55,6 +55,12 @@
     [self setNeedsDisplay];
 }
 
+- (void)setColor:(UIColor *)color {
+    _color = color;
+    
+    [self redraw];
+}
+
 // Only override drawRect: if you perform custom drawing.
 // An empty implementation adversely affects performance during animation.
 - (void)drawRect:(CGRect)rect {
