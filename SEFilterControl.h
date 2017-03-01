@@ -18,7 +18,8 @@
 #define SEFilterControl_DEFAULT_TITLE_FONT                  [UIFont fontWithName:@"Optima" size:14]
 #define SEFilterControl_DEFAULT_TITLE_SHADOW_COLOR          [UIColor lightGrayColor]
 #define SEFilterControl_DEFAULT_TITLE_COLOR                 [UIColor blackColor]
-#define SEFilterControl_DEFAULT_PROGRESS_COLOR              [UIColor colorWithRed:103/255.f green:173/255.f blue:202/255.f alpha:1]
+#define SEFilterControl_DEFAULT_PROGRESS_COLOR              [UIColor colorWithRed:0/255.f green:0/255.f blue:0/255.f alpha:1]
+#define SEFilterControl_DEFAULT_PROGRESS_BG_COLOR           [UIColor colorWithRed:103/255.f green:173/255.f blue:202/255.f alpha:1]
 
 IB_DESIGNABLE
 @interface SEFilterControl : UIControl
@@ -46,6 +47,7 @@ IB_DESIGNABLE
 @property (nonatomic, weak, readonly)   SEFilterKnob  *handler;                                         // Knob
 @property (nonatomic, assign)           IBInspectable BOOL continuous;                                  // If YES, slider will send updates its times selected index is updated, without waiting for a touch Up. Default is NO
 @property (nonatomic, retain)           IBInspectable UIColor *progressColor UI_APPEARANCE_SELECTOR;    // Progress color
+@property (nonatomic, retain)           IBInspectable UIColor *progressBGColor UI_APPEARANCE_SELECTOR;    // Progress color
 
 // Old methods
 /*! @abstract Use initWithFrame:titles: instead */

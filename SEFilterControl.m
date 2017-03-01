@@ -13,6 +13,8 @@
 
 #import "SEFilterControl.h"
 
+#import "SEFilterProgressView.h"
+
 #define LEFT_OFFSET                         25
 #define RIGHT_OFFSET                        25
 #define TITLE_SELECTED_DISTANCE             5
@@ -22,17 +24,6 @@
 #define KNOB_WIDTH                          35
 
 @interface SEFilterControl ()
-{
-    // Cached slot width
-    CGFloat oneSlotSize;
-
-    // Hold titles count, to allows a control without labels
-    NSUInteger titlesCount;
-
-    // Dragging management
-    BOOL dragging;
-    CGFloat dragOffset;
-}
 
 @property (nonatomic, strong) NSArray      *labels;
 @property (nonatomic, weak)   SEFilterKnob *handler;
@@ -40,6 +31,23 @@
 @property (nonatomic, strong) IBInspectable UIColor      *handlerColor;
 @property (nonatomic, strong) IBInspectable UIColor      *handlerShadowColor;
 @property (nonatomic, assign) IBInspectable BOOL          handlerShadow;
+
+@property (nonatomic) CGRect    progressRect;
+@property (nonatomic) CGFloat   originalWidth;
+
+@property (nonatomic, strong) SEFilterProgressView *progressView;
+@property (nonatomic, strong) SEFilterProgressView *progressBGView;
+
+// Cached slot width
+@property (nonatomic, assign) CGFloat       oneSlotSize;
+@property (nonatomic, assign) CGFloat       dragOffset;
+
+// Hold titles count, to allows a control without labels
+@property (nonatomic, assign) NSUInteger    titlesCount;
+
+// Dragging management
+@property (nonatomic, assign) BOOL          dragging;
+
 @end
 
 @implementation SEFilterControl
@@ -112,6 +120,7 @@
 {
     self.backgroundColor    = [UIColor clearColor];
     _progressColor          = SEFilterControl_DEFAULT_PROGRESS_COLOR;
+    _progressBGColor        = SEFilterControl_DEFAULT_PROGRESS_BG_COLOR;
 
     _titlesFont             = SEFilterControl_DEFAULT_TITLE_FONT;
     _titlesColor            = SEFilterControl_DEFAULT_TITLE_COLOR;
@@ -140,15 +149,32 @@
     self.labels = labels;
 
     // Hold titles counts
-    titlesCount = titles.count;
+    self.titlesCount = titles.count;
 
     // Precompute slot size for futur use
     [self refreshSlotSize];
 
     [self configureGestures];
     [self configureLabels:titles];
+    [self configureProgressView:titles.count];
     [self configureKnob];
     [self moveHandlerToIndex:0 animated:NO];
+}
+
+- (void)configureProgressView:(NSUInteger)nodeCount {
+    self.progressView = [[SEFilterProgressView alloc] initWithFrame:self.bounds];
+    self.progressView.nodeCount = nodeCount;
+    self.progressView.color = self.progressColor;
+    self.progressView.hidden = YES;
+    
+    [self addSubview:self.progressView];
+    
+    self.progressBGView = [[SEFilterProgressView alloc] initWithFrame:self.bounds];
+    self.progressBGView.nodeCount = nodeCount;
+    self.progressBGView.color = self.progressBGColor;
+    
+    [self insertSubview:self.progressBGView
+           belowSubview:self.progressView];
 }
 
 - (void)configureLabels:(NSArray *)titles
@@ -156,11 +182,11 @@
     NSString *title;
     UILabel *lbl;
 
-    for (NSInteger i = 0; i < titlesCount; i++) {
+    for (NSInteger i = 0; i < self.titlesCount; i++) {
         title = [titles objectAtIndex:i];
         lbl   = [_labels objectAtIndex:i];
 
-        [lbl setFrame:CGRectMake(0, 0, oneSlotSize, 25)];
+        [lbl setFrame:CGRectMake(0, 0, self.oneSlotSize, 25)];
         [lbl setLineBreakMode:NSLineBreakByTruncatingMiddle];
         [lbl setAdjustsFontSizeToFitWidth:YES];
         [lbl setMinimumScaleFactor:0.4];
@@ -233,7 +259,7 @@
     self.labels = labels;
 
     // Hold titles counts
-    titlesCount = titles.count;
+    self.titlesCount = titles.count;
     
     // Precompute slot size for futur use
     [self refreshSlotSize];
@@ -248,20 +274,41 @@
     self.selectedIndex = 0;
 }
 
+/*
 #pragma mark - Drawing code
 - (void)drawRect:(CGRect)rect {
 #if TARGET_INTERFACE_BUILDER
 #endif
-
+    NSLog(@"drawRect:");
+    self.progressRect = rect;
+    self.originalWidth = self.progressRect.size.width;
     CGContextRef context = UIGraphicsGetCurrentContext();
+    [self drawContext:context
+             withRect:rect
+            withColor:self.progressBGColor];
     
+    
+    UIGraphicsBeginImageContext(self.progressRect.size);
+    self.progressView = [[UIView alloc] init];
+    [self drawContext:UIGraphicsGetCurrentContext()
+             withRect:self.progressRect
+            withColor:self.progressColor];
+    
+    [self.progressView.layer drawInContext:UIGraphicsGetCurrentContext()];
+    
+    UIGraphicsEndImageContext();
+}
+
+- (void)drawContext:(CGContextRef)context
+           withRect:(CGRect)rect
+          withColor:(UIColor *)color {
     CGColorRef shadowColor = [UIColor colorWithRed:0 green:0
                                               blue:0 alpha:.9f].CGColor;
     
     
     //Fill Main Path
     
-    CGContextSetFillColorWithColor(context, self.progressColor.CGColor);
+    CGContextSetFillColorWithColor(context, color.CGColor);
     
     CGContextFillRect(context, CGRectMake(LEFT_OFFSET, rect.size.height - KNOB_WIDTH, rect.size.width-RIGHT_OFFSET-LEFT_OFFSET, 10));
     
@@ -297,21 +344,23 @@
     
     
     CGPoint centerPoint;
-    for (NSInteger i = 0; i < titlesCount; i++) {
+    
+    for (NSInteger i = 0; i < self.titlesCount; i++) {
         centerPoint = [self centerPointForIndex:i];
         
         //Draw Selection Circles
         
-        CGContextSetFillColorWithColor(context, self.progressColor.CGColor);
+        CGContextSetFillColorWithColor(context, color.CGColor);
+        
         
         CGContextFillEllipseInRect(context, CGRectMake(centerPoint.x-15, rect.size.height-42.5f, 25, 25));
         
         //Draw top Gradient
         
         CGFloat colors[12] = {0, 0, 0, 1,
-                              0, 0, 0, 0,
-                              0, 0, 0, 0};
-
+            0, 0, 0, 0,
+            0, 0, 0, 0};
+        
         CGColorSpaceRef baseSpace = CGColorSpaceCreateDeviceRGB();
         CGGradientRef gradient = CGGradientCreateWithColorComponents(baseSpace, colors, NULL, 3);
         
@@ -338,13 +387,13 @@
         CGContextSetStrokeColorWithColor(context, [UIColor colorWithRed:0 green:0
                                                                    blue:0 alpha:.2f].CGColor);
         
-        CGContextAddArc(context,centerPoint.x-2.5,rect.size.height-30.5f,12.f,(i==titlesCount-1?28:-20)*M_PI/180,(i==0?-208:-160)*M_PI/180,1);
+        CGContextAddArc(context,centerPoint.x-2.5,rect.size.height-30.5f,12.f,(i==self.titlesCount-1?28:-20)*M_PI/180,(i==0?-208:-160)*M_PI/180,1);
         CGContextSetLineWidth(context, 1.f);
         CGContextDrawPath(context,kCGPathStroke);
         
     }
 }
-
+*/
 #pragma mark - Animations
 - (void)updateTitlesToIndex:(NSInteger)index animated:(BOOL)animated{
     [_labels enumerateObjectsUsingBlock:^(UILabel *label, NSUInteger idx, BOOL *stop) {
@@ -370,6 +419,7 @@
 - (void)moveHandlerToIndex:(NSInteger) index animated:(BOOL)animated{
     CGPoint toPoint = [self centerPointForIndex:index];
     toPoint = CGPointMake(toPoint.x-(_handler.frame.size.width/2.f), _handler.frame.origin.y);
+    
     toPoint = [self fixFinalPoint:toPoint];
     
     if (animated)
@@ -396,28 +446,30 @@
     {
         if (CGRectContainsPoint(CGRectInset(_handler.frame, -40, -40) , point))
         {
-            dragOffset = point.x - CGRectGetMinX(_handler.frame);
-            dragging = YES;
-            [self moveKnobToPoint:CGPointMake(point.x - dragOffset, point.y)];
+            self.dragOffset = point.x - CGRectGetMinX(_handler.frame);
+            self.dragging = YES;
+            [self moveKnobToPoint:CGPointMake(point.x - self.dragOffset, point.y)];
+            [self touchAtPoint:CGPointMake(point.x - self.dragOffset, point.y)];
         }
 
         return;
     }
 
     // If no dragging, nothing to do
-    if (!dragging)
+    if (!self.dragging)
         return;
     
     if (panGesture.state == UIGestureRecognizerStateEnded || panGesture.state == UIGestureRecognizerStateChanged || panGesture.state == UIGestureRecognizerStateCancelled)
     {
-        [self moveKnobToPoint:CGPointMake(point.x - dragOffset, point.y)];
+        [self moveKnobToPoint:CGPointMake(point.x - self.dragOffset, point.y)];
+        [self touchAtPoint:CGPointMake(point.x - self.dragOffset, point.y)];
         
         if (panGesture.state == UIGestureRecognizerStateEnded || panGesture.state == UIGestureRecognizerStateCancelled)
         {
             [self sendActionsForControlEvents:UIControlEventTouchUpInside];
             [self setSelectedIndex:[self selectedTitleInPoint:_handler.center]
                           animated:YES];
-            dragging = NO;
+            self.dragging = NO;
         }
         else if (_continuous)
         {
@@ -430,6 +482,13 @@
             }
         }
     }
+}
+
+- (void)touchAtPoint:(CGPoint)point {
+    CGRect newBounds =  CGRectMake(0, 0,MAX(0,point.x), CGRectGetHeight(self.progressView.frame));
+
+    self.progressView.frame = newBounds;
+    self.progressView.hidden = NO;
 }
 
 - (void)moveKnobToPoint:(CGPoint)point
@@ -461,15 +520,15 @@
 - (void)refreshSlotSize
 {
     // Compute slot size
-    oneSlotSize = 1.f * (CGRectGetWidth(self.frame) - LEFT_OFFSET-RIGHT_OFFSET-1)/(titlesCount-1);
+    self.oneSlotSize = 1.f * (CGRectGetWidth(self.frame) - LEFT_OFFSET-RIGHT_OFFSET-1)/(self.titlesCount-1);
 }
 
 - (NSInteger)selectedTitleInPoint:(CGPoint)pnt {
-    return round((pnt.x-LEFT_OFFSET)/oneSlotSize);
+    return round((pnt.x-LEFT_OFFSET)/self.oneSlotSize);
 }
 
 - (CGPoint)centerPointForIndex:(NSInteger)i {
-    return CGPointMake((i/(float)(titlesCount-1)) * (CGRectGetWidth(self.frame)-RIGHT_OFFSET-LEFT_OFFSET) + LEFT_OFFSET, i==_selectedIndex ? CGRectGetHeight(self.frame) - KNOB_HEIGHT - TITLE_SELECTED_DISTANCE:CGRectGetHeight(self.frame) - KNOB_HEIGHT);
+    return CGPointMake((i/(float)(self.titlesCount-1)) * (CGRectGetWidth(self.frame)-RIGHT_OFFSET-LEFT_OFFSET) + LEFT_OFFSET, i==_selectedIndex ? CGRectGetHeight(self.frame) - KNOB_HEIGHT - TITLE_SELECTED_DISTANCE:CGRectGetHeight(self.frame) - KNOB_HEIGHT);
 }
 
 - (CGPoint)fixFinalPoint:(CGPoint)pnt {
@@ -487,6 +546,10 @@
     _selectedIndex = index;
     [self updateTitlesToIndex:index animated:animated];
     [self moveHandlerToIndex:index animated:animated];
+    
+    CGPoint toPoint = [self centerPointForIndex:index];
+    toPoint = CGPointMake(toPoint.x+(_handler.frame.size.width/4.f), _handler.frame.origin.y);
+    [self touchAtPoint:toPoint];
     [self sendActionsForControlEvents:UIControlEventValueChanged];
 }
 
