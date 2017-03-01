@@ -23,4 +23,8 @@
 
 @property (nonatomic) NSUInteger nodeCount;
 
+- (void)redraw;
+
+- (BOOL)isDrawn;
+
 @end

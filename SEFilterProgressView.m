@@ -20,6 +20,7 @@
     self.backgroundColor = [UIColor clearColor];
     self.clipsToBounds = YES;
     self.contentMode = UIViewContentModeLeft;
+    self.draw = YES;
 }
 
 - (instancetype)init {
@@ -49,12 +50,16 @@
     return self;
 }
 
+- (void)redraw {
+    self.draw = YES;
+    [self setNeedsDisplay];
+}
+
 // Only override drawRect: if you perform custom drawing.
 // An empty implementation adversely affects performance during animation.
 - (void)drawRect:(CGRect)rect {
-    NSLog(@"drawRect: %@", NSStringFromCGRect(rect));
-    if (!self.draw) {
-        self.draw = YES;
+    if (self.draw) {
+        self.draw = NO;
         
         
         CGContextRef context = UIGraphicsGetCurrentContext();
@@ -154,6 +159,10 @@
 - (CGPoint)centerPointForIndex:(NSInteger)i {
     return CGPointMake((i/(float)(self.nodeCount-1)) * (CGRectGetWidth(self.frame)-RIGHT_OFFSET-LEFT_OFFSET) + LEFT_OFFSET,
                        CGRectGetHeight(self.frame) - KNOB_HEIGHT);
+}
+
+- (BOOL)isDrawn {
+    return !self.draw;
 }
 
 @end

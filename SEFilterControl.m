@@ -156,19 +156,22 @@
 
     [self configureGestures];
     [self configureLabels:titles];
-    [self configureProgressView:titles.count];
     [self configureKnob];
+    [self configureProgressView:titles.count];
     [self moveHandlerToIndex:0 animated:NO];
 }
 
 - (void)configureProgressView:(NSUInteger)nodeCount {
+    [self.progressView removeFromSuperview];
     self.progressView = [[SEFilterProgressView alloc] initWithFrame:self.bounds];
     self.progressView.nodeCount = nodeCount;
     self.progressView.color = self.progressColor;
     self.progressView.hidden = YES;
     
-    [self addSubview:self.progressView];
+    [self insertSubview:self.progressView
+           belowSubview:self.handler];
     
+    [self.progressBGView removeFromSuperview];
     self.progressBGView = [[SEFilterProgressView alloc] initWithFrame:self.bounds];
     self.progressBGView.nodeCount = nodeCount;
     self.progressBGView.color = self.progressBGColor;
@@ -266,6 +269,8 @@
 
     // Refresh titles
     [self configureLabels:titles];
+    
+    [self configureProgressView:titles.count];
 
     // Force refresh
     [self setNeedsDisplay];
@@ -274,126 +279,6 @@
     self.selectedIndex = 0;
 }
 
-/*
-#pragma mark - Drawing code
-- (void)drawRect:(CGRect)rect {
-#if TARGET_INTERFACE_BUILDER
-#endif
-    NSLog(@"drawRect:");
-    self.progressRect = rect;
-    self.originalWidth = self.progressRect.size.width;
-    CGContextRef context = UIGraphicsGetCurrentContext();
-    [self drawContext:context
-             withRect:rect
-            withColor:self.progressBGColor];
-    
-    
-    UIGraphicsBeginImageContext(self.progressRect.size);
-    self.progressView = [[UIView alloc] init];
-    [self drawContext:UIGraphicsGetCurrentContext()
-             withRect:self.progressRect
-            withColor:self.progressColor];
-    
-    [self.progressView.layer drawInContext:UIGraphicsGetCurrentContext()];
-    
-    UIGraphicsEndImageContext();
-}
-
-- (void)drawContext:(CGContextRef)context
-           withRect:(CGRect)rect
-          withColor:(UIColor *)color {
-    CGColorRef shadowColor = [UIColor colorWithRed:0 green:0
-                                              blue:0 alpha:.9f].CGColor;
-    
-    
-    //Fill Main Path
-    
-    CGContextSetFillColorWithColor(context, color.CGColor);
-    
-    CGContextFillRect(context, CGRectMake(LEFT_OFFSET, rect.size.height - KNOB_WIDTH, rect.size.width-RIGHT_OFFSET-LEFT_OFFSET, 10));
-    
-    CGContextSaveGState(context);
-    
-    //Draw Black Top Shadow
-    
-    CGContextSetShadowWithColor(context, CGSizeMake(0, 1.f), 2.f, shadowColor);
-    
-    CGContextSetStrokeColorWithColor(context, [UIColor colorWithRed:0 green:0
-                                                               blue:0 alpha:.6f].CGColor);
-    CGContextSetLineWidth(context, .5f);
-    CGContextBeginPath(context);
-    CGContextMoveToPoint(context, LEFT_OFFSET, rect.size.height - KNOB_WIDTH);
-    CGContextAddLineToPoint(context, rect.size.width-RIGHT_OFFSET, rect.size.height - KNOB_WIDTH);
-    CGContextStrokePath(context);
-    
-    CGContextRestoreGState(context);
-    
-    CGContextSaveGState(context);
-    
-    //Draw White Bottom Shadow
-    
-    CGContextSetStrokeColorWithColor(context, [UIColor colorWithRed:1 green:1
-                                                               blue:1 alpha:1.f].CGColor);
-    CGContextSetLineWidth(context, .4f);
-    CGContextBeginPath(context);
-    CGContextMoveToPoint(context, LEFT_OFFSET, rect.size.height-25);
-    CGContextAddLineToPoint(context, rect.size.width-RIGHT_OFFSET, rect.size.height-25);
-    CGContextStrokePath(context);
-    
-    CGContextRestoreGState(context);
-    
-    
-    CGPoint centerPoint;
-    
-    for (NSInteger i = 0; i < self.titlesCount; i++) {
-        centerPoint = [self centerPointForIndex:i];
-        
-        //Draw Selection Circles
-        
-        CGContextSetFillColorWithColor(context, color.CGColor);
-        
-        
-        CGContextFillEllipseInRect(context, CGRectMake(centerPoint.x-15, rect.size.height-42.5f, 25, 25));
-        
-        //Draw top Gradient
-        
-        CGFloat colors[12] = {0, 0, 0, 1,
-            0, 0, 0, 0,
-            0, 0, 0, 0};
-        
-        CGColorSpaceRef baseSpace = CGColorSpaceCreateDeviceRGB();
-        CGGradientRef gradient = CGGradientCreateWithColorComponents(baseSpace, colors, NULL, 3);
-        
-        CGContextSaveGState(context);
-        CGContextAddEllipseInRect(context, CGRectMake(centerPoint.x-15, rect.size.height-42.5f, 25, 25));
-        CGContextClip(context);
-        CGContextDrawLinearGradient (context, gradient, CGPointMake(0, 0), CGPointMake(0,rect.size.height), 0);
-        
-        CGGradientRelease(gradient);
-        CGColorSpaceRelease(baseSpace);
-        
-        CGContextRestoreGState(context);
-        
-        //Draw White Bottom Shadow
-        
-        CGContextSetStrokeColorWithColor(context, [UIColor colorWithRed:1 green:1
-                                                                   blue:1 alpha:.4f].CGColor);
-        CGContextSetLineWidth(context, .8f);
-        CGContextAddArc(context,centerPoint.x-2.5,rect.size.height-30.5f,12.5f,24*M_PI/180,156*M_PI/180,0);
-        CGContextDrawPath(context,kCGPathStroke);
-        
-        //Draw Black Top Shadow
-        
-        CGContextSetStrokeColorWithColor(context, [UIColor colorWithRed:0 green:0
-                                                                   blue:0 alpha:.2f].CGColor);
-        
-        CGContextAddArc(context,centerPoint.x-2.5,rect.size.height-30.5f,12.f,(i==self.titlesCount-1?28:-20)*M_PI/180,(i==0?-208:-160)*M_PI/180,1);
-        CGContextSetLineWidth(context, 1.f);
-        CGContextDrawPath(context,kCGPathStroke);
-        
-    }
-}
-*/
 #pragma mark - Animations
 - (void)updateTitlesToIndex:(NSInteger)index animated:(BOOL)animated{
     [_labels enumerateObjectsUsingBlock:^(UILabel *label, NSUInteger idx, BOOL *stop) {
@@ -449,7 +334,7 @@
             self.dragOffset = point.x - CGRectGetMinX(_handler.frame);
             self.dragging = YES;
             [self moveKnobToPoint:CGPointMake(point.x - self.dragOffset, point.y)];
-            [self touchAtPoint:CGPointMake(point.x - self.dragOffset, point.y)];
+            [self progressAtPoint:CGPointMake(point.x - self.dragOffset, point.y)];
         }
 
         return;
@@ -462,7 +347,7 @@
     if (panGesture.state == UIGestureRecognizerStateEnded || panGesture.state == UIGestureRecognizerStateChanged || panGesture.state == UIGestureRecognizerStateCancelled)
     {
         [self moveKnobToPoint:CGPointMake(point.x - self.dragOffset, point.y)];
-        [self touchAtPoint:CGPointMake(point.x - self.dragOffset, point.y)];
+        [self progressAtPoint:CGPointMake(point.x - self.dragOffset, point.y)];
         
         if (panGesture.state == UIGestureRecognizerStateEnded || panGesture.state == UIGestureRecognizerStateCancelled)
         {
@@ -484,11 +369,13 @@
     }
 }
 
-- (void)touchAtPoint:(CGPoint)point {
-    CGRect newBounds =  CGRectMake(0, 0,MAX(0,point.x), CGRectGetHeight(self.progressView.frame));
-
-    self.progressView.frame = newBounds;
-    self.progressView.hidden = NO;
+- (void)progressAtPoint:(CGPoint)point {
+    if ([self.progressView isDrawn]) {
+        CGRect newBounds =  CGRectMake(0, 0,MAX(0,point.x), CGRectGetHeight(self.progressView.frame));
+        
+        self.progressView.frame = newBounds;
+        self.progressView.hidden = NO;
+    }
 }
 
 - (void)moveKnobToPoint:(CGPoint)point
@@ -549,7 +436,7 @@
     
     CGPoint toPoint = [self centerPointForIndex:index];
     toPoint = CGPointMake(toPoint.x+(_handler.frame.size.width/4.f), _handler.frame.origin.y);
-    [self touchAtPoint:toPoint];
+    [self progressAtPoint:toPoint];
     [self sendActionsForControlEvents:UIControlEventValueChanged];
 }
 
